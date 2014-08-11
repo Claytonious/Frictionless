@@ -167,3 +167,14 @@ void Update()
 ```
 
 In real projects, it's typical to reuse a few message instances instead of `new`ing them each time you raise them (just change their properties and raise again). Regular GC best practices apply here.
+
+#MVVM and Higher Architecture
+With `ServiceFactory` and `MessageRouter`, you have all of the building blocks that you need to implement MVVM or other patterns that separate view from logic. Frictionless itself doesn't care - you're free to go full MVVM or to apply a smaller subset of that pattern to only those places where you feel it adds genuine value.
+
+#Why?
+There are many existing frameworks like Strange IoC that provide this kind of functionality, but I hate them because they're unnecessarily heavy and opinionated. In contrast, Frictionless does *not* commit these sins:
+
+* Force you to arrange your hierarchy of GameObjects in ways that accomodate message routing. Transforms have parents for the sake of applying transformations - NOT for the sake of organizing objects into contexts for message routing! Frictionless doesn't force any kind of hierarchy on you at all - do what's right for your game!
+* Force you to apply MVVM or other patterns - though you're welcome to if you like!
+* Shackle you into heavy, verbose, repetitive constructs throughout your project. You're encouraged to use message routing and service resolution *in only those places where it actually helps*! It's quite fine to forego these in places where they're not needed. Be pragmatic and use these tools only where they help!
+* Force you to use attributes that cause "magic" to happen at runtime - magic that is hard to debug when things break in production across platforms. You can easily debug every call into `Resolve` or `RaiseMessage` to see exactly what's happening (which is very little, by the way!)
