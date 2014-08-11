@@ -4,46 +4,17 @@ using UnityEngine;
 
 namespace Frictionless
 {
-	public class MessageRouter : MonoBehaviour
+	public class MessageRouter
 	{
 		private Dictionary<Type,List<MessageHandler>> handlers = new Dictionary<Type, List<MessageHandler>>();
 		private List<Delegate> pendingRemovals = new List<Delegate>();
 		private bool isRaisingMessage;
-		private int previousLevel;
 
-		void Start()
+		public MessageRouter()
 		{
-			previousLevel = Application.loadedLevel;
 		}
 
-		void Update()
-		{
-			if (Application.loadedLevel != previousLevel)
-			{
-				List<Type> obsoleteTypes = new List<Type>();
-				foreach(var handlerList in handlers.Values)
-				{
-					foreach(var handler in new List<MessageHandler>(handlerList))
-					{
-						if (handler.Persistence == HandlerPersistence.DieWithScene)
-						{
-							handlerList.Remove(handler);
-							if (handlerList.Count == 0)
-								obsoleteTypes.Add (handler.MessageType);
-						}
-					}
-				}
-
-				foreach(var t in obsoleteTypes)
-				{
-					handlers.Remove(t);
-				}
-
-				previousLevel = Application.loadedLevel;
-			}
-		}
-
-		public void AddHandler<T>(Action<T> handler, HandlerPersistence persistence = HandlerPersistence.DieWithScene)
+		public void AddHandler<T>(Action<T> handler)
 		{
 			List<MessageHandler> delegates = null;
 			if (!handlers.TryGetValue(typeof(T), out delegates))
@@ -52,15 +23,7 @@ namespace Frictionless
 				handlers[typeof(T)] = delegates;
 			}
 			if (delegates.Find(x => x.Delegate == handler) == null)
-			{
-				delegates.Add(new MessageHandler() 
-				{ 
-					Target = handler.Target, 
-					Delegate = handler,
-					MessageType = typeof(T),
-					Persistence = persistence
-				});
-			}
+				delegates.Add(new MessageHandler() { Target = handler.Target, Delegate = handler });
 		}
 
 		public void RemoveHandler<T>(Action<T> handler)
@@ -81,7 +44,6 @@ namespace Frictionless
 
 		public void RaiseMessage(object msg)
 		{
-			Debug.Log ("Raising " + msg);
 			List<MessageHandler> delegates = null;
 			if (handlers.TryGetValue(msg.GetType(), out delegates))
 			{
@@ -103,6 +65,17 @@ namespace Frictionless
 				}
 				pendingRemovals.Clear();
 			}
+		}
+
+		public void Reset()
+		{
+			handlers.Clear();
+		}
+
+		public class MessageHandler
+		{
+			public object Target { get; set; }
+			public Delegate Delegate { get; set; }
 		}
 	}
 }

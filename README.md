@@ -171,6 +171,20 @@ void Update()
 
 In real projects, it's typical to reuse a few message instances instead of `new`ing them each time you raise them (just change their properties and raise again). Regular GC best practices apply here.
 
+#Changing Scenes and Unloading
+If you change scenes in your game, then you need to clear your message handlers and service registrations to prevent accidentally carrying references to dead objects across to the new scene. Doing this is simple:
+
+```c#
+// First clear all message handlers and service registrations
+ServiceFactory.Resolve<MessageRouter>().Reset();
+ServiceFactory.Reset();
+
+// Then load your new scene
+Application.LoadLevel("foo");
+```
+
+If you actually *want* message handlers to live across scene loads, then just use `RemoveHandler` for all of the ones that should be removed, and don't call `Reset`. This requires a certain amount of discipline - you have to remember to `RemoveHandler` for every `AddHandler` that shouldn't survive into the new scene, but it's easy enought to do.
+
 #MVVM and Higher Architecture
 With `ServiceFactory` and `MessageRouter`, you have all of the building blocks that you need to implement MVVM or other patterns that separate view from logic. Frictionless itself doesn't care - you're free to go full MVVM or to apply a smaller subset of that pattern to only those places where you feel it adds genuine value.
 
