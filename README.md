@@ -1,6 +1,6 @@
 #Frictionless
 
-A lightweight, simple dependency injection and message router framework for Unity apps.
+A lightweight, simple service locator and message router framework for Unity apps.
 
 Use this package to reduce coupling and keep your game flexible. Unlike other frameworks, Frictionless:
 
@@ -10,7 +10,7 @@ Use this package to reduce coupling and keep your game flexible. Unlike other fr
 
 Frictionless gives you two tools:
 
-* `ServiceFactory`: a dirt simple dependency injection container.
+* `ServiceFactory`: a dirt simple service locator.
 * `MessageRouter`: a flexible, general purpose message router.
 
 #Installation
