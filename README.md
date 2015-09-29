@@ -22,7 +22,7 @@ Use `ServiceFactory` to prevent your components from needing to reference one an
 ##Register and Resolve
 Use a simple singleton like this:
 
-```c#
+```csharp
 // Your singleton MonoBehaviour ...
 class Player : MonoBehaviour
 {
@@ -33,16 +33,16 @@ class Player : MonoBehaviour
 }
 
 // In one place at startup, register a singleton instance of your player like this:
-ServiceFactory.RegisterSingleton<Player>();
+ServiceFactory.Instance.RegisterSingleton<Player>();
 
 // A GameObject with the Player component is now in your scene
 
 // Later, in any other class anywhere in the project, do stuff with Player:
-ServiceFactory.Resolve<Player>().TakeDamage(100);
+ServiceFactory.Instance.Resolve<Player>().TakeDamage(100);
 ```
 
 You can also code against interfaces so that the concrete implementation can change based on different contexts:
-```c#
+```csharp
 interface IStore
 {
 	bool Purchase(string sku);
@@ -65,11 +65,11 @@ class GooglePlayStore : IStore
 {
 	public bool Purchase(string sku)
 	{
-		using (AndroidJavaClass cls = new AndroidJavaClass("com.yourcompany.store")) 
-		{ 
+		using (AndroidJavaClass cls = new AndroidJavaClass("com.yourcompany.store"))
+		{
 			return cls.CallStatic<bool>("purchase", sku);
 		}
-	} 
+	}
 }
 
 // And other stores...
@@ -78,9 +78,9 @@ class GooglePlayStore : IStore
 void Awake()
 {
 #if UNITY_IOS
-	ServiceFactory.RegisterSingleton<IStore, AppleStore>();
+	ServiceFactory.Instance.RegisterSingleton<IStore, AppleStore>();
 #elif UNITY_ANDROID
-	ServiceFactory.RegisterSingleton<IStore, GooglePlayStore>();
+	ServiceFactory.Instance.RegisterSingleton<IStore, GooglePlayStore>();
 #endif
 }
 
@@ -88,7 +88,7 @@ void Awake()
 
 void HandlePurchaseGemsButtonTapped()
 {
-	ServiceFactory.Resolve<IStore>().Purchase("PackOfGems");
+	ServiceFactory.Instance.Resolve<IStore>().Purchase("PackOfGems");
 }
 ```
 
@@ -97,11 +97,11 @@ The same thing works with transient objects - instead of `RegisterSingleton` use
 ##Route Messages
 But this is still too hard wired because someone had to explicitly call `Player.TakeDamage`, so they needed knowledge of `Player`. Use `MessageRouter` to decouple even more!
 
-```c#
+```csharp
 // Once at startup:
 void Awake()
 {
-	ServiceFactory.RegisterSingleton<MessageRouter>();
+	ServiceFactory.Instance.RegisterSingleton<MessageRouter>();
 }
 
 // Create a new message (messages can be *any* reference type)
@@ -116,7 +116,7 @@ public class Player : MonoBehaviour
 {
 	void Start()
 	{
-		ServiceFactory.Resolve<MessageRouter>().AddMessageHandler<PlayerDamageMessage>(HandleDamageTaken);
+		ServiceFactory.Instance.Resolve<MessageRouter>().AddMessageHandler<PlayerDamageMessage>(HandleDamageTaken);
 	}
 
 	private void HandleDamageTaken(PlayerDamageMessage msg)
@@ -133,7 +133,7 @@ public class PlayerHitPointsGUIWidget : MonoBehaviour
 	void Start()
 	{
 		// You can use lambdas instead of methods if you like (OK under AOT on iOS)
-		ServiceFactory.Resolve<MessageRouter>().AddMessageHandler<PlayerDamageMessage>((msg) =>
+		ServiceFactory.Instance.Resolve<MessageRouter>().AddMessageHandler<PlayerDamageMessage>((msg) =>
 		{
 			displayedHitPoints -= msg.HitPoints;
 			myTextLabel.text = String.Format("{0:n0}", displayedHitPoints);
@@ -147,7 +147,7 @@ public class ScreenBloodImageEffect : MonoBehaviour
 {
 	void Start()
 	{
-		ServiceFactory.Resolve<MessageRouter>().AddMessageHandler<PlayerDamageMessage>(HandleDamageTaken);
+		ServiceFactory.Instance.Resolve<MessageRouter>().AddMessageHandler<PlayerDamageMessage>(HandleDamageTaken);
 	}
 
 	private void HandleDamageTaken(PlayerDamageMessage msg)
@@ -162,7 +162,7 @@ void Update()
 {
 	if (volcanoExploded)
 	{
-		ServiceFactory.Resolve<MessageRouter>().RaiseMessage(new PlayerDamageMessage() { HitPoints = 100 });
+		ServiceFactory.Instance.Resolve<MessageRouter>().RaiseMessage(new PlayerDamageMessage() { HitPoints = 100 });
 	}
 }
 
@@ -174,16 +174,18 @@ In real projects, it's typical to reuse a few message instances instead of `new`
 #Changing Scenes and Unloading
 If you change scenes in your game, then you need to clear your message handlers and service registrations to prevent accidentally carrying references to dead objects across to the new scene. Doing this is simple:
 
-```c#
+```csharp
 // First clear all message handlers and service registrations
-ServiceFactory.Resolve<MessageRouter>().Reset();
-ServiceFactory.Reset();
+ServiceFactory.Instance.Resolve<MessageRouter>().Reset();
+ServiceFactory.Instance.Reset();
 
 // Then load your new scene
 Application.LoadLevel("foo");
 ```
 
 If you actually *want* message handlers to live across scene loads, then just use `RemoveHandler` for all of the ones that should be removed, and don't call `Reset`. This requires a certain amount of discipline - you have to remember to `RemoveHandler` for every `AddHandler` that shouldn't survive into the new scene, but it's easy enought to do.
+
+Or, implement the interface `IMultiSceneSingleton`. The `ServiceFactory` will automatically treat these as long-lived across the entire application lifetime. Be sure to initialize these with `DontDestroyOnLoad` when you create them, as you normally would with any Unity object that's going to outlive the scene it's in.
 
 #MVVM and Higher Architecture
 With `ServiceFactory` and `MessageRouter`, you have all of the building blocks that you need to implement MVVM or other patterns that separate view from logic. Frictionless itself doesn't care - you're free to go full MVVM or to apply a smaller subset of that pattern to only those places where you feel it adds genuine value.

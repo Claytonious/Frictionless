@@ -26,7 +26,7 @@ public class RoutingTest : MonoBehaviour
 				IntegrationTest.Fail(gameObject, "Balls are prematurely in motion - this should not have happened until a message was routed!");
 		}
 
-		ServiceFactory.Resolve<MessageRouter>().RaiseMessage(new DropCommand() { Force = 500.0f });
+		ServiceFactory.Instance.Resolve<MessageRouter>().RaiseMessage(new DropCommand() { Force = 500.0f });
 
 		yield return new WaitForSeconds(2.0f);
 

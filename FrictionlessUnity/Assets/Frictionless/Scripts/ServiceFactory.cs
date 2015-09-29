@@ -1,75 +1,142 @@
 using System;
 using System.Collections.Generic;
-
-/// <summary>
-/// A simple, *single-threaded*, dependency injection container appropriate for use with Unity.
-/// </summary>
+using System.Reflection;
 using UnityEngine;
 
-public class ServiceFactory
+/// <summary>
+/// A simple, *single-threaded*, service locator appropriate for use with Unity.
+/// </summary>
+
+namespace Frictionless
 {
-	private static Dictionary<Type,Type> singletons = new Dictionary<Type, Type>();
-	private static Dictionary<Type,Type> transients = new Dictionary<Type, Type>();
-	private static Dictionary<Type,object> singletonInstances = new Dictionary<Type, object>();
+	public class ServiceFactory
+	{
+		private static ServiceFactory instance;
 
-	private ServiceFactory()
-	{
-	}
+		private Dictionary<Type,Type> singletons = new Dictionary<Type, Type>();
+		private Dictionary<Type,Type> transients = new Dictionary<Type, Type>();
+		private Dictionary<Type,object> singletonInstances = new Dictionary<Type, object>();
 
-	public static void Reset()
-	{
-		singletons.Clear();
-		transients.Clear();
-		singletonInstances.Clear();
-	}
-
-	public static void RegisterSingleton<TConcrete>()
-	{
-		singletons[typeof(TConcrete)] = typeof(TConcrete);
-	}
-
-	public static void RegisterSingleton<TAbstract,TConcrete>()
-	{
-		singletons[typeof(TAbstract)] = typeof(TConcrete);
-	}
-	
-	public static void RegisterSingleton<TConcrete>(TConcrete instance)
-	{
-		singletons[typeof(TConcrete)] = typeof(TConcrete);
-		singletonInstances[typeof(TConcrete)] = instance;
-	}
-
-	public static void RegisterTransient<TAbstract,TConcrete>()
-	{
-		transients[typeof(TAbstract)] = typeof(TConcrete);
-	}
-
-	public static T Resolve<T>() where T : class
-	{
-		T result = default(T);
-		Type concreteType = null;
-		if (singletons.TryGetValue(typeof(T), out concreteType))
+		static ServiceFactory()
 		{
-			object r = null;
-			if (!singletonInstances.TryGetValue(typeof(T), out r))
+			instance = new ServiceFactory();
+		}
+
+		protected ServiceFactory()
+		{
+		}
+
+		public static ServiceFactory Instance
+		{
+			get { return instance; }
+		}
+
+		public bool IsEmpty
+		{
+			get { return singletons.Count == 0 && transients.Count == 0; }
+		}
+
+		public void HandleNewSceneLoaded()
+		{
+			List<IMultiSceneSingleton> multis = new List<IMultiSceneSingleton>();
+			foreach(KeyValuePair<Type,object> pair in singletonInstances)
 			{
-				if (concreteType.IsSubclassOf(typeof(MonoBehaviour)))
-				{
-					GameObject singletonGameObject = new GameObject();
-					r = singletonGameObject.AddComponent(concreteType);
-					singletonGameObject.name = typeof(T).ToString() + " (singleton)";
-				}
-				else
-					r = concreteType.GetConstructor(Type.EmptyTypes).Invoke(new object[] { });
-				singletonInstances[typeof(T)] = r;
+				IMultiSceneSingleton multi = pair.Value as IMultiSceneSingleton;
+				if (multi != null)
+					multis.Add (multi);
 			}
-			result = (T)r;
+			foreach(var multi in multis)
+			{
+				MonoBehaviour behavior = multi as MonoBehaviour;
+				if (behavior != null)
+					behavior.StartCoroutine(multi.HandleNewSceneLoaded());
+			}
 		}
-		else if (transients.TryGetValue(typeof(T), out concreteType))
+
+		public void Reset()
 		{
-			object r = concreteType.GetConstructor(Type.EmptyTypes).Invoke(new object[] { });
-			result = (T)r;
+			List<Type> survivorRegisteredTypes = new List<Type>();
+			List<object> survivors = new List<object>();
+			foreach(KeyValuePair<Type,object> pair in singletonInstances)
+			{
+				if (pair.Value is IMultiSceneSingleton)
+				{
+					survivors.Add(pair.Value);
+					survivorRegisteredTypes.Add(pair.Key);
+				}
+			}
+			singletons.Clear();
+			transients.Clear();
+			singletonInstances.Clear();
+
+			for (int i = 0; i < survivors.Count; i++)
+			{
+				singletonInstances[survivorRegisteredTypes[i]] = survivors[i];
+				singletons[survivorRegisteredTypes[i]] = survivors[i].GetType();
+			}
 		}
-		return result;
+
+		public void RegisterSingleton<TConcrete>()
+		{
+			singletons[typeof(TConcrete)] = typeof(TConcrete);
+		}
+
+		public void RegisterSingleton<TAbstract,TConcrete>()
+		{
+			singletons[typeof(TAbstract)] = typeof(TConcrete);
+		}
+		
+		public void RegisterSingleton<TConcrete>(TConcrete instance)
+		{
+			singletons[typeof(TConcrete)] = typeof(TConcrete);
+			singletonInstances[typeof(TConcrete)] = instance;
+		}
+
+		public void RegisterTransient<TAbstract,TConcrete>()
+		{
+			transients[typeof(TAbstract)] = typeof(TConcrete);
+		}
+
+		public T Resolve<T>() where T : class
+		{
+			return Resolve<T>(false);
+		}
+
+		public T Resolve<T>(bool onlyExisting) where T : class
+		{
+			T result = default(T);
+			Type concreteType = null;
+			if (singletons.TryGetValue(typeof(T), out concreteType))
+			{
+				object r = null;
+				if (!singletonInstances.TryGetValue(typeof(T), out r) && !onlyExisting)
+				{
+	#if NETFX_CORE
+					if (concreteType.GetTypeInfo().IsSubclassOf(typeof(MonoBehaviour)))
+	#else
+					if (concreteType.IsSubclassOf(typeof(MonoBehaviour)))
+	#endif
+					{
+						GameObject singletonGameObject = new GameObject();
+						r = singletonGameObject.AddComponent(concreteType);
+						singletonGameObject.name = typeof(T).ToString() + " (singleton)";
+					}
+					else
+						r = Activator.CreateInstance(concreteType);
+					singletonInstances[typeof(T)] = r;
+
+					IMultiSceneSingleton multi = r as IMultiSceneSingleton;
+					if (multi != null)
+						multi.HandleNewSceneLoaded();
+				}
+				result = (T)r;
+			}
+			else if (transients.TryGetValue(typeof(T), out concreteType))
+			{
+				object r = Activator.CreateInstance(concreteType);
+				result = (T)r;
+			}
+			return result;
+		}
 	}
 }

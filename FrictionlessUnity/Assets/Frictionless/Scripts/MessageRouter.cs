@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine;
+using System.Collections;
 
 namespace Frictionless
 {
@@ -42,34 +42,47 @@ namespace Frictionless
 			}
 		}
 
-		public void RaiseMessage(object msg)
-		{
-			List<MessageHandler> delegates = null;
-			if (handlers.TryGetValue(msg.GetType(), out delegates))
-			{
-				isRaisingMessage = true;
-				try
-				{
-					foreach (MessageHandler h in delegates)
-						h.Delegate.Method.Invoke(h.Target, new object[] { msg });
-				}
-				finally
-				{
-					isRaisingMessage = false;
-				}
-				foreach (Delegate d in pendingRemovals)
-				{
-					MessageHandler existingHandler = delegates.Find(x => x.Delegate == d);
-					if (existingHandler != null)
-						delegates.Remove(existingHandler);
-				}
-				pendingRemovals.Clear();
-			}
-		}
-
 		public void Reset()
 		{
 			handlers.Clear();
+		}
+
+		public void RaiseMessage(object msg)
+		{
+			try
+			{
+				List<MessageHandler> delegates = null;
+				if (handlers.TryGetValue(msg.GetType(), out delegates))
+				{
+					isRaisingMessage = true;
+					try
+					{
+						foreach (MessageHandler h in delegates)
+						{
+	#if NETFX_CORE
+							h.Delegate.DynamicInvoke(msg);
+	#else
+							h.Delegate.Method.Invoke(h.Target, new object[] { msg });
+	#endif
+						}
+					}
+					finally
+					{
+						isRaisingMessage = false;
+					}
+					foreach (Delegate d in pendingRemovals)
+					{
+						MessageHandler existingHandler = delegates.Find(x => x.Delegate == d);
+						if (existingHandler != null)
+							delegates.Remove(existingHandler);
+					}
+					pendingRemovals.Clear();
+				}
+			}
+			catch(Exception ex)
+			{
+				UnityEngine.Debug.LogError("Exception while raising message " + msg + ": " + ex);
+			}
 		}
 
 		public class MessageHandler
