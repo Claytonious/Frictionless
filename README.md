@@ -98,12 +98,6 @@ The same thing works with transient objects - instead of `RegisterSingleton` use
 But this is still too hard wired because someone had to explicitly call `Player.TakeDamage`, so they needed knowledge of `Player`. Use `MessageRouter` to decouple even more!
 
 ```csharp
-// Once at startup:
-void Awake()
-{
-	ServiceFactory.Instance.RegisterSingleton<MessageRouter>();
-}
-
 // Create a new message (messages can be *any* reference type)
 public class PlayerDamageMessage
 {
@@ -116,7 +110,7 @@ public class Player : MonoBehaviour
 {
 	void Start()
 	{
-		ServiceFactory.Instance.Resolve<MessageRouter>().AddMessageHandler<PlayerDamageMessage>(HandleDamageTaken);
+		MessageRouter.AddMessageHandler<PlayerDamageMessage>(HandleDamageTaken);
 	}
 
 	private void HandleDamageTaken(PlayerDamageMessage msg)
@@ -133,7 +127,7 @@ public class PlayerHitPointsGUIWidget : MonoBehaviour
 	void Start()
 	{
 		// You can use lambdas instead of methods if you like (OK under AOT on iOS)
-		ServiceFactory.Instance.Resolve<MessageRouter>().AddMessageHandler<PlayerDamageMessage>((msg) =>
+		MessageRouter.AddMessageHandler<PlayerDamageMessage>((msg) =>
 		{
 			displayedHitPoints -= msg.HitPoints;
 			myTextLabel.text = String.Format("{0:n0}", displayedHitPoints);
@@ -147,7 +141,7 @@ public class ScreenBloodImageEffect : MonoBehaviour
 {
 	void Start()
 	{
-		ServiceFactory.Instance.Resolve<MessageRouter>().AddMessageHandler<PlayerDamageMessage>(HandleDamageTaken);
+		MessageRouter.AddMessageHandler<PlayerDamageMessage>(HandleDamageTaken);
 	}
 
 	private void HandleDamageTaken(PlayerDamageMessage msg)
@@ -162,7 +156,7 @@ void Update()
 {
 	if (volcanoExploded)
 	{
-		ServiceFactory.Instance.Resolve<MessageRouter>().RaiseMessage(new PlayerDamageMessage() { HitPoints = 100 });
+		MessageRouter.RaiseMessage(new PlayerDamageMessage() { HitPoints = 100 });
 	}
 }
 
@@ -176,14 +170,14 @@ If you change scenes in your game, then you need to clear your message handlers 
 
 ```csharp
 // First clear all message handlers and service registrations
-ServiceFactory.Instance.Resolve<MessageRouter>().Reset();
+MessageRouter.Reset();
 ServiceFactory.Instance.Reset();
 
 // Then load your new scene
 Application.LoadLevel("foo");
 ```
 
-If you actually *want* message handlers to live across scene loads, then just use `RemoveHandler` for all of the ones that should be removed, and don't call `Reset`. This requires a certain amount of discipline - you have to remember to `RemoveHandler` for every `AddHandler` that shouldn't survive into the new scene, but it's easy enought to do.
+If you actually *want* message handlers to live across scene loads, then just use `RemoveHandler` for all of the ones that should be removed and don't call `Reset`. This requires a certain amount of discipline - you have to remember to `RemoveHandler` for every `AddHandler` that shouldn't survive into the new scene, but it's easy enought to do.
 
 Or, implement the interface `IMultiSceneSingleton`. The `ServiceFactory` will automatically treat these as long-lived across the entire application lifetime. Be sure to initialize these with `DontDestroyOnLoad` when you create them, as you normally would with any Unity object that's going to outlive the scene it's in.
 
