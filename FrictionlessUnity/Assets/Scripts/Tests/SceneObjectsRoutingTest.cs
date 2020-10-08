@@ -8,10 +8,10 @@ using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
-public class RoutingTest
+public class SceneObjectsRoutingTest
 {
 	[UnityTest]
-	public IEnumerator Start()
+	public IEnumerator MessagesInteractWithScene()
 	{
 		SceneManager.LoadScene("Tests", LoadSceneMode.Additive);
 		yield return null;
