@@ -3,40 +3,43 @@ using System.Collections;
 using System.Collections.Generic;
 using Frictionless;
 using System;
+using NUnit.Framework;
+using UnityEngine.SceneManagement;
+using UnityEngine.TestTools;
+using Object = UnityEngine.Object;
 
-public class RoutingTest : MonoBehaviour
+public class RoutingTest
 {
-	IEnumerator Start()
+	[UnityTest]
+	public IEnumerator Start()
 	{
+		SceneManager.LoadScene("Tests", LoadSceneMode.Additive);
+		yield return null;
+		
 		const float epsilon = 0.1f;
 
-		Ball[] balls = GameObject.FindObjectsOfType<Ball>();
-		if (balls == null || balls.Length == 0)
-			IntegrationTest.Fail(gameObject, "Failed to find objects to test - the scene isn't setup correctly for this test");
-		Vector3[] startPositions = new Vector3[balls.Length];
-		for (int i = 0; i < balls.Length; i++)
+		var balls = Object.FindObjectsOfType<Ball>();
+		Assert.IsTrue(balls?.Length > 0, "Failed to find objects to test - the scene isn't setup correctly for this test");
+		var startPositions = new Vector3[balls.Length];
+		for (var i = 0; i < balls.Length; i++)
 			startPositions[i] = balls[i].transform.position;
 
 		yield return new WaitForSeconds(2.0f);
 
 		// Verify that nothing has changed yet
-		for (int i = 0; i < balls.Length; i++)
+		for (var i = 0; i < balls.Length; i++)
 		{
-			if ((startPositions[i] - balls[i].transform.position).magnitude > epsilon)
-				IntegrationTest.Fail(gameObject, "Balls are prematurely in motion - this should not have happened until a message was routed!");
+			Assert.IsFalse((startPositions[i] - balls[i].transform.position).magnitude > epsilon, "Balls are prematurely in motion - this should not have happened until a message was routed!");
 		}
 
-		ServiceFactory.Instance.Resolve<MessageRouter>().RaiseMessage(new DropCommand() { Force = 500.0f });
+		MessageRouter.RaiseMessage(new DropCommand() { Force = 500.0f });
 
 		yield return new WaitForSeconds(2.0f);
 
 		// Verify that things have changed for all recipients
 		for (int i = 0; i < balls.Length; i++)
 		{
-			if ((startPositions[i] - balls[i].transform.position).magnitude <= epsilon)
-				IntegrationTest.Fail(gameObject, "Balls failed to respond to routed message");
+			Assert.IsFalse((startPositions[i] - balls[i].transform.position).magnitude <= epsilon, "Balls failed to respond to routed message");
 		}
-
-		IntegrationTest.Pass(gameObject);
 	}
 }

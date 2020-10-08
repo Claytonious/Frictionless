@@ -1,0 +1,21 @@
+{
+  "name": "com.mojogames.frictionless",
+  "version": "1.0.0",
+  "displayName": "Frictionless",
+  "description": "Simple service locator and message router for loose coupling in Unity",
+  "unity": "2018.1",
+  "keywords": [
+    "mvvm",
+    "coupling",
+    "router",
+    "message",
+    "singleton"
+  ],
+  "dependencies": {
+  },
+  "author": {
+    "name": "Mojo Games",
+    "email": "info@mojo-games.co",
+    "url": "http://mojo-games.co"
+  }
+}

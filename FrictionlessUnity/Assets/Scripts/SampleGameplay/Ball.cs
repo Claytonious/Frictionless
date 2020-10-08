@@ -4,9 +4,9 @@ using Frictionless;
 
 public class Ball : MonoBehaviour
 {
-	void Start()
+	private void Start()
 	{
-		ServiceFactory.Instance.Resolve<MessageRouter>().AddHandler<DropCommand>(HandleDropCommand);
+		MessageRouter.AddHandler<DropCommand>(HandleDropCommand);
 	}
 
 	private void HandleDropCommand(DropCommand dropCommand)
