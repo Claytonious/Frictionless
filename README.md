@@ -1,4 +1,4 @@
-#Frictionless
+# Frictionless
 
 A lightweight, simple service locator and message router framework for Unity apps.
 
@@ -13,13 +13,13 @@ Frictionless gives you two tools:
 * `ServiceFactory`: a dirt simple service locator.
 * `MessageRouter`: a flexible, general purpose message router.
 
-#Installation
+# Installation
 Download the .unitypackage from the Releases tab above and import into your project.
 
-#ServiceFactory
+# ServiceFactory
 Use `ServiceFactory` to prevent your components from needing to reference one another directly and to prevent your components from needing to know the concrete types of services that they depend on. You can use it to track and instantiate singletons and/or regular instances of any class. It is aware of Unity's `MonoBehaviour` and will automatically create `GameObject`s to host those on if needed.
 
-##Register and Resolve
+## Register and Resolve
 Use a simple singleton like this:
 
 ```csharp
@@ -94,7 +94,7 @@ void HandlePurchaseGemsButtonTapped()
 
 The same thing works with transient objects - instead of `RegisterSingleton` use `Register`. Callers will then receive new instances of the correct concrete type whenever they `Resolve` instead of getting a reference to the same instance.
 
-##Route Messages
+## Route Messages
 But this is still too hard wired because someone had to explicitly call `Player.TakeDamage`, so they needed knowledge of `Player`. Use `MessageRouter` to decouple even more!
 
 ```csharp
@@ -171,7 +171,7 @@ void Update()
 
 In real projects, it's typical to reuse a few message instances instead of `new`ing them each time you raise them (just change their properties and raise again). Regular GC best practices apply here.
 
-#Changing Scenes and Unloading
+# Changing Scenes and Unloading
 If you change scenes in your game, then you need to clear your message handlers and service registrations to prevent accidentally carrying references to dead objects across to the new scene. Doing this is simple:
 
 ```csharp
@@ -187,10 +187,10 @@ If you actually *want* message handlers to live across scene loads, then just us
 
 Or, implement the interface `IMultiSceneSingleton`. The `ServiceFactory` will automatically treat these as long-lived across the entire application lifetime. Be sure to initialize these with `DontDestroyOnLoad` when you create them, as you normally would with any Unity object that's going to outlive the scene it's in.
 
-#MVVM and Higher Architecture
+# MVVM and Higher Architecture
 With `ServiceFactory` and `MessageRouter`, you have all of the building blocks that you need to implement MVVM or other patterns that separate view from logic. Frictionless itself doesn't care - you're free to go full MVVM or to apply a smaller subset of that pattern to only those places where you feel it adds genuine value.
 
-#Why?
+# Why?
 There are many existing frameworks like Strange IoC that provide this kind of functionality, but I hate them because they're unnecessarily heavy and opinionated. In contrast, Frictionless does *not* commit these sins:
 
 * Force you to arrange your hierarchy of GameObjects in ways that accomodate message routing. Transforms have parents for the sake of applying transformations - NOT for the sake of organizing objects into contexts for message routing! Frictionless doesn't force any kind of hierarchy on you at all - do what's right for your game!
