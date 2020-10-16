@@ -15,11 +15,6 @@ namespace Frictionless
 		private static readonly Dictionary<Type,Type> transients = new Dictionary<Type, Type>();
 		private static readonly Dictionary<Type,object> singletonInstances = new Dictionary<Type, object>();
 
-		static ServiceFactory()
-		{
-			instance = new ServiceFactory();
-		}
-
 		public static bool IsEmpty
 		{
 			get { return singletons.Count == 0 && transients.Count == 0; }
