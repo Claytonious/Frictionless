@@ -1,6 +1,6 @@
 {
   "name": "com.mojogames.frictionless",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "displayName": "Frictionless",
   "description": "Simple service locator and message router for loose coupling in Unity",
   "unity": "2018.1",

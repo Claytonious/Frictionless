@@ -9,34 +9,23 @@ using UnityEngine;
 
 namespace Frictionless
 {
-	public class ServiceFactory
+	public static class ServiceFactory
 	{
-		private static ServiceFactory instance;
-
-		private Dictionary<Type,Type> singletons = new Dictionary<Type, Type>();
-		private Dictionary<Type,Type> transients = new Dictionary<Type, Type>();
-		private Dictionary<Type,object> singletonInstances = new Dictionary<Type, object>();
+		private static readonly Dictionary<Type,Type> singletons = new Dictionary<Type, Type>();
+		private static readonly Dictionary<Type,Type> transients = new Dictionary<Type, Type>();
+		private static readonly Dictionary<Type,object> singletonInstances = new Dictionary<Type, object>();
 
 		static ServiceFactory()
 		{
 			instance = new ServiceFactory();
 		}
 
-		protected ServiceFactory()
-		{
-		}
-
-		public static ServiceFactory Instance
-		{
-			get { return instance; }
-		}
-
-		public bool IsEmpty
+		public static bool IsEmpty
 		{
 			get { return singletons.Count == 0 && transients.Count == 0; }
 		}
 
-		public void HandleNewSceneLoaded()
+		public static void HandleNewSceneLoaded()
 		{
 			List<IMultiSceneSingleton> multis = new List<IMultiSceneSingleton>();
 			foreach(KeyValuePair<Type,object> pair in singletonInstances)
@@ -53,7 +42,7 @@ namespace Frictionless
 			}
 		}
 
-		public void Reset()
+		public static void Reset()
 		{
 			List<Type> survivorRegisteredTypes = new List<Type>();
 			List<object> survivors = new List<object>();
@@ -76,33 +65,33 @@ namespace Frictionless
 			}
 		}
 
-		public void RegisterSingleton<TConcrete>()
+		public static void RegisterSingleton<TConcrete>()
 		{
 			singletons[typeof(TConcrete)] = typeof(TConcrete);
 		}
 
-		public void RegisterSingleton<TAbstract,TConcrete>()
+		public static void RegisterSingleton<TAbstract,TConcrete>()
 		{
 			singletons[typeof(TAbstract)] = typeof(TConcrete);
 		}
 		
-		public void RegisterSingleton<TConcrete>(TConcrete instance)
+		public static void RegisterSingleton<TConcrete>(TConcrete instance)
 		{
 			singletons[typeof(TConcrete)] = typeof(TConcrete);
 			singletonInstances[typeof(TConcrete)] = instance;
 		}
 
-		public void RegisterTransient<TAbstract,TConcrete>()
+		public static void RegisterTransient<TAbstract,TConcrete>()
 		{
 			transients[typeof(TAbstract)] = typeof(TConcrete);
 		}
 
-		public T Resolve<T>() where T : class
+		public static T Resolve<T>() where T : class
 		{
 			return Resolve<T>(false);
 		}
 
-		public T Resolve<T>(bool onlyExisting) where T : class
+		public static T Resolve<T>(bool onlyExisting) where T : class
 		{
 			T result = default(T);
 			Type concreteType = null;
