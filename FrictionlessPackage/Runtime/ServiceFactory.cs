@@ -20,23 +20,6 @@ namespace Frictionless
 			get { return singletons.Count == 0 && transients.Count == 0; }
 		}
 
-		public static void HandleNewSceneLoaded()
-		{
-			List<IMultiSceneSingleton> multis = new List<IMultiSceneSingleton>();
-			foreach(KeyValuePair<Type,object> pair in singletonInstances)
-			{
-				IMultiSceneSingleton multi = pair.Value as IMultiSceneSingleton;
-				if (multi != null)
-					multis.Add (multi);
-			}
-			foreach(var multi in multis)
-			{
-				MonoBehaviour behavior = multi as MonoBehaviour;
-				if (behavior != null)
-					behavior.StartCoroutine(multi.HandleNewSceneLoaded());
-			}
-		}
-
 		public static void Reset()
 		{
 			List<Type> survivorRegisteredTypes = new List<Type>();
@@ -108,10 +91,6 @@ namespace Frictionless
 					else
 						r = Activator.CreateInstance(concreteType);
 					singletonInstances[typeof(T)] = r;
-
-					IMultiSceneSingleton multi = r as IMultiSceneSingleton;
-					if (multi != null)
-						multi.HandleNewSceneLoaded();
 				}
 				result = (T)r;
 			}
