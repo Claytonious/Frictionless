@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
@@ -86,7 +87,7 @@ namespace Frictionless
 					{
 						GameObject singletonGameObject = new GameObject();
 						r = singletonGameObject.AddComponent(concreteType);
-						singletonGameObject.name = typeof(T).ToString() + " (singleton)";
+						singletonGameObject.name = $"{typeof(T)} (singleton)";
 					}
 					else
 						r = Activator.CreateInstance(concreteType);
@@ -100,6 +101,18 @@ namespace Frictionless
 				result = (T)r;
 			}
 			return result;
+		}
+
+		public static IEnumerator HandleSceneLoad(AsyncOperation sceneLoadOperation)
+		{
+			yield return sceneLoadOperation;
+			foreach(KeyValuePair<Type,object> pair in singletonInstances)
+			{
+				if (pair.Value is IReinitializingMultiSceneSingleton reinitializingMultiSceneSingleton)
+				{
+					reinitializingMultiSceneSingleton.ReinitializeAfterSceneLoad();
+				}
+			}
 		}
 	}
 }
