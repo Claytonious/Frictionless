@@ -191,3 +191,5 @@ There are many existing frameworks like Strange IoC that provide this kind of fu
 * Force you to apply MVVM or other patterns - though you're welcome to if you like!
 * Shackle you into heavy, verbose, repetitive constructs throughout your project. You're encouraged to use message routing and service resolution *in only those places where it actually helps*! It's quite fine to forego these in places where they're not needed. Be pragmatic and use these tools only where they help!
 * Force you to use attributes that cause "magic" to happen at runtime - magic that is hard to debug when things break in production across platforms. You can easily debug every call into `Resolve` or `RaiseMessage` to see exactly what's happening (which is very little, by the way!)
+
+Test
