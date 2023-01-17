@@ -54,8 +54,12 @@ namespace Frictionless
 			singletons[typeof(TAbstract)] = typeof(TConcrete);
 		}
 		
-		public static void RegisterSingleton<TConcrete>(TConcrete instance)
+		public static void RegisterSingleton<TConcrete>(TConcrete instance, bool onlyIfNotExists = false) where TConcrete : class
 		{
+			if (onlyIfNotExists && Resolve<TConcrete>() != default)
+			{
+				return;
+			}
 			singletons[typeof(TConcrete)] = typeof(TConcrete);
 			singletonInstances[typeof(TConcrete)] = instance;
 		}
