@@ -110,6 +110,11 @@ namespace Frictionless
 		public static IEnumerator HandleSceneLoad(AsyncOperation sceneLoadOperation)
 		{
 			yield return sceneLoadOperation;
+			HandleSceneLoaded();
+		}
+
+		public static void HandleSceneLoaded()
+		{
 			foreach(KeyValuePair<Type,object> pair in singletonInstances)
 			{
 				if (pair.Value is IReinitializingMultiSceneSingleton reinitializingMultiSceneSingleton)
