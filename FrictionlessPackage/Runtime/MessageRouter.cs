@@ -1,87 +1,93 @@
 using System;
 using System.Collections.Generic;
 using System.Collections;
+using System.Linq;
+using UnityEngine;
 
 namespace Frictionless
 {
 	public static class MessageRouter
 	{
-		private static readonly Dictionary<Type,List<MessageHandler>> Handlers = new Dictionary<Type, List<MessageHandler>>();
-		private static readonly List<Delegate> PendingRemovals = new List<Delegate>();
-		private static bool _isRaisingMessage;
+		private static readonly HashSet<Action> Clearers = new();
 
 		public static void AddHandler<T>(Action<T> handler)
 		{
-			if (!Handlers.TryGetValue(typeof(T), out var delegates))
+			var handlers = MessageHandler<T>.Handlers;
+			if (!handlers.Any(h => h == handler))
 			{
-				delegates = new List<MessageHandler>();
-				Handlers[typeof(T)] = delegates;
+				handlers.Add(handler);
+				Clearers.Add(MessageHandler<T>.Clear);
 			}
-			if (delegates.Find(x => x.Delegate == (Delegate) handler) == null)
-				delegates.Add(new MessageHandler() { Target = handler.Target, Delegate = handler });
 		}
 
-		public static void RemoveHandler<T>(Action<T> handler)
+		public static void RemoveHandler<T>(Action<T> handlerToRemove)
 		{
-			if (Handlers.TryGetValue(typeof(T), out var delegates))
+			if (MessageHandler<T>._isRaisingMessage)
 			{
-				MessageHandler existingHandler = delegates.Find(x => x.Delegate == (Delegate) handler);
-				if (existingHandler != null)
-				{
-					if (_isRaisingMessage)
-						PendingRemovals.Add(handler);
-					else
-						delegates.Remove(existingHandler);
-				}
+				MessageHandler<T>.PendingRemovals.Add(handlerToRemove);
+			}
+			else
+			{
+				MessageHandler<T>.Handlers.Remove(handlerToRemove);
 			}
 		}
 
 		public static void Reset()
 		{
-			Handlers.Clear();
+			foreach (var clearer in Clearers)
+			{
+				clearer.Invoke();
+			}
 		}
 
-		public static void RaiseMessage(object msg)
+		public static void RaiseMessage<T>(T msg)
 		{
-			try
+			MessageHandler<T>.RaiseAll(msg);
+		}
+
+		public class MessageHandlerBase
+		{
+		}
+
+		public class MessageHandler<T> : MessageHandlerBase
+		{
+			public static bool _isRaisingMessage;
+			public static readonly List<Action<T>> Handlers = new();
+			public static readonly List<Action<T>> PendingRemovals = new();
+
+			public static void Clear()
 			{
-				if (Handlers.TryGetValue(msg.GetType(), out var delegates))
+				Handlers.Clear();
+				PendingRemovals.Clear();
+			}
+
+			public static void RaiseAll(T msg)
+			{
+				_isRaisingMessage = true;
+				try
 				{
-					_isRaisingMessage = true;
-					try
+					foreach (var handler in Handlers)
 					{
-						foreach (MessageHandler h in delegates)
+						try
 						{
-	#if NETFX_CORE
-							h.Delegate.DynamicInvoke(msg);
-	#else
-							h.Delegate.Method.Invoke(h.Target, new object[] { msg });
-	#endif
+							handler.Invoke(msg);
+						}
+						catch (Exception ex)
+						{
+							UnityEngine.Debug.LogError($"Exception while raising message {msg}: {ex}");
 						}
 					}
-					finally
-					{
-						_isRaisingMessage = false;
-					}
-					foreach (Delegate d in PendingRemovals)
-					{
-						MessageHandler existingHandler = delegates.Find(x => x.Delegate == d);
-						if (existingHandler != null)
-							delegates.Remove(existingHandler);
-					}
+				}
+				finally
+				{
+					_isRaisingMessage = false;
+				}
+				if (PendingRemovals.Count > 0)
+				{
+					Handlers.RemoveAll(h => PendingRemovals.Contains(h));
 					PendingRemovals.Clear();
 				}
 			}
-			catch(Exception ex)
-			{
-				UnityEngine.Debug.LogError("Exception while raising message " + msg + ": " + ex);
-			}
-		}
-
-		public class MessageHandler
-		{
-			public object Target { get; set; }
-			public Delegate Delegate { get; set; }
 		}
 	}
 }
