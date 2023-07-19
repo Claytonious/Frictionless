@@ -4,12 +4,11 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
-/// <summary>
-/// A simple, *single-threaded*, service locator appropriate for use with Unity.
-/// </summary>
-
 namespace Frictionless
 {
+	/// <summary>
+	/// A simple, *single-threaded*, service locator appropriate for use with Unity.
+	/// </summary>
 	public static class ServiceFactory
 	{
 		private static readonly Dictionary<Type,Type> singletons = new Dictionary<Type, Type>();
@@ -27,10 +26,17 @@ namespace Frictionless
 			List<object> survivors = new List<object>();
 			foreach(KeyValuePair<Type,object> pair in singletonInstances)
 			{
-				if (keepMultisceneSingletons && pair.Value is IMultiSceneSingleton)
+				if (pair.Value is IMultiSceneSingleton)
 				{
-					survivors.Add(pair.Value);
-					survivorRegisteredTypes.Add(pair.Key);
+					if (keepMultisceneSingletons)
+					{
+						survivors.Add(pair.Value);
+						survivorRegisteredTypes.Add(pair.Key);
+					}
+					else if (pair.Value is MonoBehaviour monoBehaviour)
+					{
+						UnityEngine.Object.Destroy(monoBehaviour);
+					}
 				}
 			}
 			singletons.Clear();
