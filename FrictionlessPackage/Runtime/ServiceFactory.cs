@@ -21,13 +21,13 @@ namespace Frictionless
 			get { return singletons.Count == 0 && transients.Count == 0; }
 		}
 
-		public static void Reset()
+		public static void Reset(bool keepMultisceneSingletons = true)
 		{
 			List<Type> survivorRegisteredTypes = new List<Type>();
 			List<object> survivors = new List<object>();
 			foreach(KeyValuePair<Type,object> pair in singletonInstances)
 			{
-				if (pair.Value is IMultiSceneSingleton)
+				if (keepMultisceneSingletons && pair.Value is IMultiSceneSingleton)
 				{
 					survivors.Add(pair.Value);
 					survivorRegisteredTypes.Add(pair.Key);
