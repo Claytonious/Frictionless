@@ -50,6 +50,12 @@ namespace Frictionless
 			}
 		}
 
+		public static void RegisterSingleton<TConcrete>(Type abstractType, TConcrete instance)
+		{
+			singletons[abstractType] = typeof(TConcrete);
+			singletonInstances[abstractType] = instance;
+		}
+
 		public static void RegisterSingleton<TConcrete>()
 		{
 			singletons[typeof(TConcrete)] = typeof(TConcrete);
