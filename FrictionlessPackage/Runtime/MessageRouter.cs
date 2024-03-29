@@ -10,10 +10,16 @@ namespace Frictionless
 	{
 		private static readonly HashSet<Action> Clearers = new();
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void InitializeDomain()
+		{
+			Reset();
+		}
+
 		public static void AddHandler<T>(Action<T> handler)
 		{
 			var handlers = MessageHandler<T>.Handlers;
-			if (!handlers.Any(h => h == handler))
+			if (handlers.All(h => h != handler))
 			{
 				handlers.Add(handler);
 				Clearers.Add(MessageHandler<T>.Clear);

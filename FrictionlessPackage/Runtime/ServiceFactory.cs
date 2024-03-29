@@ -11,20 +11,25 @@ namespace Frictionless
 	/// </summary>
 	public static class ServiceFactory
 	{
-		private static readonly Dictionary<Type,Type> singletons = new Dictionary<Type, Type>();
-		private static readonly Dictionary<Type,Type> transients = new Dictionary<Type, Type>();
-		private static readonly Dictionary<Type,object> singletonInstances = new Dictionary<Type, object>();
+		private static readonly Dictionary<Type,Type> Singletons = new();
+		private static readonly Dictionary<Type,Type> Transients = new();
+		private static readonly Dictionary<Type,object> SingletonInstances = new();
 
-		public static bool IsEmpty
+		public static bool IsEmpty => Singletons.Count == 0 && Transients.Count == 0;
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void InitializeDomain()
 		{
-			get { return singletons.Count == 0 && transients.Count == 0; }
+			Singletons.Clear();
+			Transients.Clear();
+			SingletonInstances.Clear();
 		}
 
 		public static void Reset(bool keepMultisceneSingletons = true)
 		{
-			List<Type> survivorRegisteredTypes = new List<Type>();
-			List<object> survivors = new List<object>();
-			foreach(KeyValuePair<Type,object> pair in singletonInstances)
+			var survivorRegisteredTypes = new List<Type>();
+			var survivors = new List<object>();
+			foreach(var pair in SingletonInstances)
 			{
 				if (pair.Value is IMultiSceneSingleton)
 				{
@@ -39,31 +44,31 @@ namespace Frictionless
 					}
 				}
 			}
-			singletons.Clear();
-			transients.Clear();
-			singletonInstances.Clear();
+			Singletons.Clear();
+			Transients.Clear();
+			SingletonInstances.Clear();
 
-			for (int i = 0; i < survivors.Count; i++)
+			for (var i = 0; i < survivors.Count; i++)
 			{
-				singletonInstances[survivorRegisteredTypes[i]] = survivors[i];
-				singletons[survivorRegisteredTypes[i]] = survivors[i].GetType();
+				SingletonInstances[survivorRegisteredTypes[i]] = survivors[i];
+				Singletons[survivorRegisteredTypes[i]] = survivors[i].GetType();
 			}
 		}
 
 		public static void RegisterSingleton<TConcrete>(Type abstractType, TConcrete instance)
 		{
-			singletons[abstractType] = typeof(TConcrete);
-			singletonInstances[abstractType] = instance;
+			Singletons[abstractType] = typeof(TConcrete);
+			SingletonInstances[abstractType] = instance;
 		}
 
 		public static void RegisterSingleton<TConcrete>()
 		{
-			singletons[typeof(TConcrete)] = typeof(TConcrete);
+			Singletons[typeof(TConcrete)] = typeof(TConcrete);
 		}
 
 		public static void RegisterSingleton<TAbstract,TConcrete>()
 		{
-			singletons[typeof(TAbstract)] = typeof(TConcrete);
+			Singletons[typeof(TAbstract)] = typeof(TConcrete);
 		}
 		
 		public static void RegisterSingleton<TConcrete>(TConcrete instance, bool onlyIfNotExists = false) where TConcrete : class
@@ -72,13 +77,13 @@ namespace Frictionless
 			{
 				return;
 			}
-			singletons[typeof(TConcrete)] = typeof(TConcrete);
-			singletonInstances[typeof(TConcrete)] = instance;
+			Singletons[typeof(TConcrete)] = typeof(TConcrete);
+			SingletonInstances[typeof(TConcrete)] = instance;
 		}
 
 		public static void RegisterTransient<TAbstract,TConcrete>()
 		{
-			transients[typeof(TAbstract)] = typeof(TConcrete);
+			Transients[typeof(TAbstract)] = typeof(TConcrete);
 		}
 
 		public static T Resolve<T>() where T : class
@@ -90,10 +95,10 @@ namespace Frictionless
 		{
 			T result = default(T);
 			Type concreteType = null;
-			if (singletons.TryGetValue(typeof(T), out concreteType))
+			if (Singletons.TryGetValue(typeof(T), out concreteType))
 			{
 				object r = null;
-				if (!singletonInstances.TryGetValue(typeof(T), out r) && !onlyExisting)
+				if (!SingletonInstances.TryGetValue(typeof(T), out r) && !onlyExisting)
 				{
 	#if NETFX_CORE
 					if (concreteType.GetTypeInfo().IsSubclassOf(typeof(MonoBehaviour)))
@@ -107,11 +112,11 @@ namespace Frictionless
 					}
 					else
 						r = Activator.CreateInstance(concreteType);
-					singletonInstances[typeof(T)] = r;
+					SingletonInstances[typeof(T)] = r;
 				}
 				result = (T)r;
 			}
-			else if (transients.TryGetValue(typeof(T), out concreteType))
+			else if (Transients.TryGetValue(typeof(T), out concreteType))
 			{
 				object r = Activator.CreateInstance(concreteType);
 				result = (T)r;
@@ -127,7 +132,7 @@ namespace Frictionless
 
 		public static void HandleSceneLoaded()
 		{
-			foreach(KeyValuePair<Type,object> pair in singletonInstances)
+			foreach(KeyValuePair<Type,object> pair in SingletonInstances)
 			{
 				if (pair.Value is IReinitializingMultiSceneSingleton reinitializingMultiSceneSingleton)
 				{
