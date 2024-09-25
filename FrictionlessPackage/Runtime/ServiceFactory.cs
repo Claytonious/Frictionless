@@ -11,20 +11,30 @@ namespace Frictionless
 	/// </summary>
 	public static class ServiceFactory
 	{
-		private static readonly Dictionary<Type,Type> _singletons = new();
-		private static readonly Dictionary<Type,Type> _transients = new();
-		private static readonly Dictionary<Type,object> _singletonInstances = new();
+		private static readonly Dictionary<Type,Type> Singletons = new();
+		private static readonly Dictionary<Type,Type> Transients = new();
+		private static readonly Dictionary<Type,object> SingletonInstances = new();
 		private static bool _isReinitializingSingletons;
-		private static readonly Dictionary<Type,Type> _pendingSingletons = new();
-		private static readonly Dictionary<Type,object> _pendingSingletonInstances = new();
+		private static readonly Dictionary<Type,Type> PendingSingletons = new();
+		private static readonly Dictionary<Type,object> PendingSingletonInstances = new();
 
-		public static bool IsEmpty => _singletons.Count == 0 && _transients.Count == 0;
+		public static bool IsEmpty => Singletons.Count == 0 && Transients.Count == 0;
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void InitializeDomain()
+		{
+			Singletons.Clear();
+			Transients.Clear();
+			SingletonInstances.Clear();
+			PendingSingletons.Clear();
+			PendingSingletonInstances.Clear();
+		}
 
 		public static void Reset(bool keepMultisceneSingletons = true)
 		{
 			var survivorRegisteredTypes = new List<Type>();
 			var survivors = new List<object>();
-			foreach(var pair in _singletonInstances)
+			foreach(var pair in SingletonInstances)
 			{
 				if (pair.Value is IMultiSceneSingleton)
 				{
@@ -39,15 +49,16 @@ namespace Frictionless
 					}
 				}
 			}
-			_singletons.Clear();
-			_transients.Clear();
-			_singletonInstances.Clear();
-			_pendingSingletons.Clear();
+			Singletons.Clear();
+			Transients.Clear();
+			SingletonInstances.Clear();
+			PendingSingletons.Clear();
+			PendingSingletonInstances.Clear();
 
 			for (var i = 0; i < survivors.Count; i++)
 			{
-				_singletonInstances[survivorRegisteredTypes[i]] = survivors[i];
-				_singletons[survivorRegisteredTypes[i]] = survivors[i].GetType();
+				SingletonInstances[survivorRegisteredTypes[i]] = survivors[i];
+				Singletons[survivorRegisteredTypes[i]] = survivors[i].GetType();
 			}
 		}
 
@@ -55,32 +66,32 @@ namespace Frictionless
 		{
 			if (_isReinitializingSingletons)
 			{
-				_pendingSingletons[abstractType] = typeof(TConcrete);
-				_pendingSingletonInstances[abstractType] = instance;
+				PendingSingletons[abstractType] = typeof(TConcrete);
+				PendingSingletonInstances[abstractType] = instance;
 				return;
 			}
-			_singletons[abstractType] = typeof(TConcrete);
-			_singletonInstances[abstractType] = instance;
+			Singletons[abstractType] = typeof(TConcrete);
+			SingletonInstances[abstractType] = instance;
 		}
 
 		public static void RegisterSingleton<TConcrete>()
 		{
 			if (_isReinitializingSingletons)
 			{
-				_pendingSingletons[typeof(TConcrete)] = typeof(TConcrete);
+				PendingSingletons[typeof(TConcrete)] = typeof(TConcrete);
 				return;
 			}
-			_singletons[typeof(TConcrete)] = typeof(TConcrete);
+			Singletons[typeof(TConcrete)] = typeof(TConcrete);
 		}
 
 		public static void RegisterSingleton<TAbstract,TConcrete>()
 		{
 			if (_isReinitializingSingletons)
 			{
-				_pendingSingletons[typeof(TAbstract)] = typeof(TConcrete);
+				PendingSingletons[typeof(TAbstract)] = typeof(TConcrete);
 				return;
 			}
-			_singletons[typeof(TAbstract)] = typeof(TConcrete);
+			Singletons[typeof(TAbstract)] = typeof(TConcrete);
 		}
 		
 		public static void RegisterSingleton<TConcrete>(TConcrete instance, bool onlyIfNotExists = false) where TConcrete : class
@@ -91,17 +102,17 @@ namespace Frictionless
 			}
 			if (_isReinitializingSingletons)
 			{
-				_pendingSingletons[typeof(TConcrete)] = typeof(TConcrete);
-				_pendingSingletonInstances[typeof(TConcrete)] = instance;
+				PendingSingletons[typeof(TConcrete)] = typeof(TConcrete);
+				PendingSingletonInstances[typeof(TConcrete)] = instance;
 				return;
 			}
-			_singletons[typeof(TConcrete)] = typeof(TConcrete);
-			_singletonInstances[typeof(TConcrete)] = instance;
+			Singletons[typeof(TConcrete)] = typeof(TConcrete);
+			SingletonInstances[typeof(TConcrete)] = instance;
 		}
 
 		public static void RegisterTransient<TAbstract,TConcrete>()
 		{
-			_transients[typeof(TAbstract)] = typeof(TConcrete);
+			Transients[typeof(TAbstract)] = typeof(TConcrete);
 		}
 
 		public static T Resolve<T>() where T : class
@@ -112,10 +123,11 @@ namespace Frictionless
 		public static T Resolve<T>(bool onlyExisting) where T : class
 		{
 			T result = default(T);
-			if (_singletons.TryGetValue(typeof(T), out var concreteType))
+			Type concreteType = null;
+			if (Singletons.TryGetValue(typeof(T), out concreteType))
 			{
 				object r = null;
-				if (!_singletonInstances.TryGetValue(typeof(T), out r) && !onlyExisting)
+				if (!SingletonInstances.TryGetValue(typeof(T), out r) && !onlyExisting)
 				{
 	#if NETFX_CORE
 					if (concreteType.GetTypeInfo().IsSubclassOf(typeof(MonoBehaviour)))
@@ -128,12 +140,14 @@ namespace Frictionless
 						singletonGameObject.name = $"{typeof(T)} (singleton)";
 					}
 					else
+					{
 						r = Activator.CreateInstance(concreteType);
-					_singletonInstances[typeof(T)] = r;
+					}
+					SingletonInstances[typeof(T)] = r;
 				}
 				result = (T)r;
 			}
-			else if (_transients.TryGetValue(typeof(T), out concreteType))
+			else if (Transients.TryGetValue(typeof(T), out concreteType))
 			{
 				object r = Activator.CreateInstance(concreteType);
 				result = (T)r;
@@ -150,7 +164,7 @@ namespace Frictionless
 		public static void HandleSceneLoaded()
 		{
 			_isReinitializingSingletons = true;
-			foreach(var pair in _singletonInstances)
+			foreach(var pair in SingletonInstances)
 			{
 				if (pair.Value is IReinitializingMultiSceneSingleton reinitializingMultiSceneSingleton)
 				{
@@ -165,18 +179,18 @@ namespace Frictionless
 				}
 			}
 
-			foreach (var pair in _pendingSingletons)
+			foreach (var pair in PendingSingletons)
 			{
-				_singletons[pair.Key] = pair.Value;
+				Singletons[pair.Key] = pair.Value;
 			}
 
-			foreach (var pair in _pendingSingletonInstances)
+			foreach (var pair in PendingSingletonInstances)
 			{
-				_singletonInstances[pair.Key] = pair.Value;
+				SingletonInstances[pair.Key] = pair.Value;
 			}
 
-			_pendingSingletons.Clear();
-			_pendingSingletonInstances.Clear();
+			PendingSingletons.Clear();
+			PendingSingletonInstances.Clear();
 			_isReinitializingSingletons = false;
 		}
 	}
