@@ -48,7 +48,14 @@ namespace Frictionless
 
 		public static void RaiseMessage<T>(T msg)
 		{
-			MessageHandler<T>.RaiseAll(msg);
+			if (UnityMainThreadDispatcher.IsMainThread)
+			{
+				MessageHandler<T>.RaiseAll(msg);
+			}
+			else
+			{
+				UnityMainThreadDispatcher.DoOnMainThread(() => MessageHandler<T>.RaiseAll(msg));
+			}
 		}
 
 		public class MessageHandlerBase
