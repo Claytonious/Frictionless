@@ -14,7 +14,7 @@ Frictionless gives you two tools:
 * `MessageRouter`: a flexible, general purpose message router.
 
 # Installation
-Download the .unitypackage from the Releases tab above and import into your project.
+Clone the repository and add it as a local package ("from disk" in the Unity package manager) in your Unity project. The packages in the Releases tab above are outdated.
 
 # ServiceFactory
 Use `ServiceFactory` to prevent your components from needing to reference one another directly and to prevent your components from needing to know the concrete types of services that they depend on. You can use it to track and instantiate singletons and/or regular instances of any class. It is aware of Unity's `MonoBehaviour` and will automatically create `GameObject`s to host those on if needed.
